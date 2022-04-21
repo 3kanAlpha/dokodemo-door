@@ -26,3 +26,5 @@ forge*changelog.txt
 
 # misc
 /reference/
+/src/main/resources/assets/
+/src/main/resources/pack.mcmeta

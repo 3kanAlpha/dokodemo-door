@@ -19,14 +19,6 @@ archivesBaseName = 'DokodemoDoor-1.12'
 
 sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
 
-// Added to fix the issue that resources are not loaded
-sourceSets {
-    main {
-        output.resourcesDir = java.outputDir
-    }
-}
-idea.module.outputDir file("out/production/classes")
-
 minecraft {
     // The mappings can be changed at any time, and must be in the following format.
     // snapshot_YYYYMMDD   Snapshot are built nightly.
@@ -121,4 +113,13 @@ publishing {
             url "file:///${project.projectDir}/mcmodsrepo"
         }
     }
+}
+
+// Added to fix the issue that resources are not loaded
+copy {
+    delete {
+        delete "$buildDir/classes/java/main"
+    }
+    into "$buildDir/classes/java/main"
+    from sourceSets.main.resources
 }
