@@ -1,0 +1,7 @@
+{
+  "parent": "block/door_bottom_rh",
+  "textures": {
+    "bottom": "dkdmdoor:blocks/iron_teleporter_lower",
+    "top": "dkdmdoor:blocks/iron_teleporter_upper"
+  }
+}

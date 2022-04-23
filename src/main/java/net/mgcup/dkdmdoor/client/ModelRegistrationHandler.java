@@ -1,6 +1,7 @@
 package net.mgcup.dkdmdoor.client;
 
 import net.mgcup.dkdmdoor.DokodemoDoorMod;
+import net.mgcup.dkdmdoor.init.ModBlocks;
 import net.mgcup.dkdmdoor.init.ModItems;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.item.Item;
@@ -18,6 +19,10 @@ public class ModelRegistrationHandler {
         registerModel(ModItems.WOODEN_TELEPORTER, 0);
         registerModel(ModItems.IRON_TELEPORTER, 0);
         registerModel(ModItems.STONE_TELEPORTER, 0);
+
+        registerModel(Item.getItemFromBlock(ModBlocks.WOODEN_TELEPORTER_BLOCK), 0);
+        registerModel(Item.getItemFromBlock(ModBlocks.IRON_TELEPORTER_BLOCK), 0);
+        registerModel(Item.getItemFromBlock(ModBlocks.STONE_TELEPORTER_BLOCK), 0);
     }
 
     private static void registerModel(Item item, int meta) {

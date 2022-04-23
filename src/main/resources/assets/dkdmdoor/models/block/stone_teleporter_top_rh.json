@@ -1,0 +1,7 @@
+{
+  "parent": "block/door_top_rh",
+  "textures": {
+    "bottom": "dkdmdoor:blocks/stone_teleporter_lower",
+    "top": "dkdmdoor:blocks/stone_teleporter_upper"
+  }
+}

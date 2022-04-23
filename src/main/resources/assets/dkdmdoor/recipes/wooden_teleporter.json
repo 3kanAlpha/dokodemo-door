@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "XX",
+    "X#",
+    "XX"
+  ],
+  "key": {
+    "X": {
+      "type": "forge:ore_dict",
+      "ore": "plankWood"
+    },
+    "#": {
+      "item": "minecraft:ender_pearl"
+    }
+  },
+  "result": {
+    "item": "dkdmdoor:wooden_teleporter"
+  }
+}
