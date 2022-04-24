@@ -14,7 +14,7 @@ import org.apache.logging.log4j.Logger;
 public class DokodemoDoorMod
 {
     public static final String MODID = "dkdmdoor";
-    public static final String NAME = "Dokodemo Door";
+    public static final String NAME = "Anywhere Travel Door";
     public static final String VERSION = "0.1";
 
     private static Logger logger;
