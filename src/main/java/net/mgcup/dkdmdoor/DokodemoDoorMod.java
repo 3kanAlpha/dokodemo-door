@@ -17,7 +17,7 @@ public class DokodemoDoorMod
     public static final String NAME = "Anywhere Travel Door";
     public static final String VERSION = "0.1";
 
-    private static Logger logger;
+    public static Logger logger;
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event)
