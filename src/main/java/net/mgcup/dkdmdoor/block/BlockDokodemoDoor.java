@@ -6,6 +6,7 @@ import net.mgcup.dkdmdoor.init.ModItems;
 import net.mgcup.dkdmdoor.util.ServerLogManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockDoor;
+import net.minecraft.block.BlockStaticLiquid;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.MapColor;
 import net.minecraft.block.material.Material;
@@ -14,6 +15,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
@@ -21,6 +23,7 @@ import net.minecraft.util.EnumHand;
 import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.util.text.TextComponentTranslation;
@@ -28,12 +31,16 @@ import net.minecraft.util.text.translation.I18n;
 import net.minecraft.world.Explosion;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldProviderSurface;
+import net.minecraft.world.chunk.Chunk;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Random;
 
 public class BlockDokodemoDoor extends BlockDoor  {
     private static final int TRAVEL_LIMIT = 29999872;
+    private static final int TRAVEL_LIMIT_SAFE = 10000;
 
     public BlockDokodemoDoor(Material materialIn) {
         super(materialIn);
@@ -241,7 +248,7 @@ public class BlockDokodemoDoor extends BlockDoor  {
     }
 
     private void checkIfEntityPassed(World worldIn, BlockPos pos, IBlockState state) {
-        if (!isOpen(worldIn, pos) || worldIn.provider.getDimension() != 0) return;
+        if (!isOpen(worldIn, pos) || !(worldIn.provider instanceof WorldProviderSurface)) return;
 
         if (state.getValue(HALF) == EnumDoorHalf.UPPER) return;
 
@@ -296,30 +303,67 @@ public class BlockDokodemoDoor extends BlockDoor  {
     }
 
     private void teleportSomewhere(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase entity) {
-        double destX = (worldIn.rand.nextDouble() - worldIn.rand.nextDouble()) * TRAVEL_LIMIT;
-        double destZ = (worldIn.rand.nextDouble() - worldIn.rand.nextDouble()) * TRAVEL_LIMIT;
+        double destX = (worldIn.rand.nextDouble() - worldIn.rand.nextDouble()) * TRAVEL_LIMIT_SAFE;
+        double destZ = (worldIn.rand.nextDouble() - worldIn.rand.nextDouble()) * TRAVEL_LIMIT_SAFE;
 
-        BlockPos dest = new BlockPos(destX, entity.posY, destZ);
+        Chunk chunk = getChunk(worldIn, destX, destZ);
+        BlockPos dest = findSpawnpointInChunk(chunk);
 
-        worldIn.getChunkProvider().provideChunk(dest.getX() >> 4, dest.getZ() >> 4);
+        if (dest == null) {
+            DokodemoDoorMod.logger.warn("Cannot locate the spawn point.");
+            return;
+        }
+
+        if (chunk.getBlockState(dest.down()).getBlock() == Blocks.AIR) {
+            chunk.setBlockState(dest.down(), Blocks.STONEBRICK.getDefaultState());
+        }
+
+        if (entity.isRiding()) {
+            entity.dismountRidingEntity();
+        }
+        entity.setPositionAndUpdate(dest.getX() + 0.5d, dest.getY(), dest.getZ() + 0.5d);
 
         if (entity instanceof EntityPlayerMP) {
             EntityPlayerMP player = (EntityPlayerMP) entity;
 
-            player.dismountRidingEntity();
-            player.connection.setPlayerLocation(destX, entity.posY, destZ, entity.rotationYaw, entity.rotationPitch);
-            player.setRotationYawHead(entity.rotationYaw);
-
             double distance = pos.getDistance(dest.getX(), dest.getY(), dest.getZ());
             player.sendMessage(new TextComponentTranslation("dkdmdoor.distance", String.format("%.1f", distance / 1000.0d)));
         }
-        else {
-            entity.setLocationAndAngles(destX, entity.posY, destZ, entity.rotationYaw, entity.rotationPitch);
-            entity.setRotationYawHead(entity.rotationYaw);
-        }
+
+        ServerLogManager.printServerLog(worldIn.getMinecraftServer(), String.format("%s teleported from " + pos + " to " + dest, entity.getName()));
 
         entity.fallDistance = 0.0f;
         entity.motionY = 0.0f;
+    }
+
+    @Nullable
+    private static BlockPos findSpawnpointInChunk(Chunk chunkIn) {
+        final int CHUNK_SIZE = 16;
+        BlockPos vertex1 = new BlockPos(chunkIn.x * CHUNK_SIZE, 52, chunkIn.z * CHUNK_SIZE);
+        int y = chunkIn.getTopFilledSegment() + CHUNK_SIZE - 1;
+        BlockPos vertex2 = new BlockPos(chunkIn.x * CHUNK_SIZE + CHUNK_SIZE - 1, y, chunkIn.z * CHUNK_SIZE + CHUNK_SIZE - 1);
+        BlockPos spawn = null;
+        double minDistance = 0.0d;
+
+        for (BlockPos b : BlockPos.getAllInBox(vertex1, vertex2)) {
+            IBlockState state = chunkIn.getBlockState(b);
+            boolean flag = chunkIn.getBlockState(b.up(1)).getMaterial().isReplaceable() && chunkIn.getBlockState(b.up(2)).getBlock() == Blocks.AIR;
+
+            if ((state.isNormalCube() || state.getBlock() instanceof BlockStaticLiquid) && flag) {
+                double blockDistance = b.distanceSqToCenter(chunkIn.x * CHUNK_SIZE + 8,63, chunkIn.z * CHUNK_SIZE + 8);
+
+                if (spawn == null || blockDistance < minDistance) {
+                    spawn = (state.getBlock() instanceof BlockStaticLiquid ? b.up(10) : b);
+                    minDistance = blockDistance;
+                }
+            }
+        }
+
+        return spawn;
+    }
+
+    private static Chunk getChunk(World worldIn, double blockX, double blockZ) {
+        return worldIn.getChunkFromChunkCoords(MathHelper.floor(blockX / 16.0d), MathHelper.floor(blockZ / 16.0d));
     }
 
     @Override
