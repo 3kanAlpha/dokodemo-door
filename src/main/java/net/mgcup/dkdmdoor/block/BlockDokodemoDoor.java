@@ -3,6 +3,7 @@ package net.mgcup.dkdmdoor.block;
 import net.mgcup.dkdmdoor.DokodemoDoorMod;
 import net.mgcup.dkdmdoor.init.ModBlocks;
 import net.mgcup.dkdmdoor.init.ModItems;
+import net.mgcup.dkdmdoor.util.DoorDataManager;
 import net.mgcup.dkdmdoor.util.ServerLogManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockDoor;
@@ -17,6 +18,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemDoor;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
@@ -40,7 +42,8 @@ import java.util.Random;
 
 public class BlockDokodemoDoor extends BlockDoor  {
     private static final int TRAVEL_LIMIT = 29999872;
-    private static final int TRAVEL_LIMIT_SAFE = 10000;
+    private static final int TRAVEL_LIMIT_SAFE = 100000;
+    private static final int TRAVEL_LIMIT_STONE = 10000;
 
     public BlockDokodemoDoor(Material materialIn) {
         super(materialIn);
@@ -299,45 +302,91 @@ public class BlockDokodemoDoor extends BlockDoor  {
     private void activateTeleporting(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase entity) {
         DokodemoDoorMod.logger.debug("Door Teleportation System Activated!");
 
-        teleportSomewhere(worldIn, pos, state, entity);
+        BlockPos dest = DokodemoDoorMod.saveHandler.getManager().getDestination(pos);
+
+        // if (dest != null) DokodemoDoorMod.logger.debug(String.format("Destination: %s", dest.toString()));
+
+        if (dest == null) {
+            teleportSomewhere(worldIn, pos, state, entity);
+        }
+        else {
+            this.teleportToDestination(worldIn, pos, state, entity);
+        }
+
+        DokodemoDoorMod.saveHandler.saveDoorInfo(DokodemoDoorMod.saveHandler.getManager().getDoorData());
     }
 
     private void teleportSomewhere(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase entity) {
-        double destX = (worldIn.rand.nextDouble() - worldIn.rand.nextDouble()) * TRAVEL_LIMIT_SAFE;
-        double destZ = (worldIn.rand.nextDouble() - worldIn.rand.nextDouble()) * TRAVEL_LIMIT_SAFE;
+        double destX, destZ;
+
+        if (state.getMaterial() != Material.ROCK) {
+            destX = (worldIn.rand.nextDouble() - worldIn.rand.nextDouble()) * TRAVEL_LIMIT_SAFE;
+            destZ = (worldIn.rand.nextDouble() - worldIn.rand.nextDouble()) * TRAVEL_LIMIT_SAFE;
+        }
+        else {
+            destX = pos.getX() + (worldIn.rand.nextDouble() * 0.9d + 0.1d) * TRAVEL_LIMIT_STONE * (worldIn.rand.nextBoolean() ? -1 : 1);
+            destZ = pos.getZ() + (worldIn.rand.nextDouble() * 0.9d + 0.1d) * TRAVEL_LIMIT_STONE * (worldIn.rand.nextBoolean() ? -1 : 1);
+        }
 
         Chunk chunk = getChunk(worldIn, destX, destZ);
-        BlockPos dest = findSpawnpointInChunk(chunk);
+        BlockPos dest = findSpawnpointInChunk(chunk, getFacing(worldIn, pos).getOpposite());
 
         if (dest == null) {
             DokodemoDoorMod.logger.warn("Cannot locate the spawn point.");
             return;
         }
 
-        if (chunk.getBlockState(dest.down()).getBlock() == Blocks.AIR) {
-            chunk.setBlockState(dest.down(), Blocks.STONEBRICK.getDefaultState());
-        }
+        DokodemoDoorMod.saveHandler.getManager().addEntry(pos.toImmutable(), dest.toImmutable(), state.getMaterial() != Material.WOOD);
 
+        this.teleportEntity(worldIn, pos, state, entity, dest);
+    }
+
+    private void teleportToDestination(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase entity) {
+        DoorDataManager manager = DokodemoDoorMod.saveHandler.getManager();
+        BlockPos dest = manager.getDestination(pos);
+
+        Chunk chunk = getChunk(worldIn, dest.getX(), dest.getZ());
+
+        this.teleportEntity(worldIn, pos, state, entity, dest);
+    }
+
+    private void teleportEntity(World worldIn, BlockPos doorPos, IBlockState doorState, EntityLivingBase entity, BlockPos dest) {
         if (entity.isRiding()) {
             entity.dismountRidingEntity();
         }
-        entity.setPositionAndUpdate(dest.getX() + 0.5d, dest.getY(), dest.getZ() + 0.5d);
+
+        BlockPos offset = dest.offset(getFacing(worldIn, doorPos).getOpposite());
+
+        // can suffocate
+        entity.setPositionAndUpdate(offset.getX() + 0.5d, dest.getY() + 0.5d, offset.getZ() + 0.5d);
+
+        // Place the door if needed
+        if (doorState.getMaterial() != Material.WOOD && worldIn.getBlockState(dest).getBlock() != this) {
+            if (worldIn.getBlockState(dest.down()).getBlock() == Blocks.AIR) {
+                worldIn.setBlockState(dest.down(), Blocks.STONEBRICK.getDefaultState());
+            }
+
+            boolean flag = doorState.getValue(HINGE) == EnumHingePosition.RIGHT;
+            ItemDoor.placeDoor(worldIn, dest, getFacing(worldIn, doorPos), this, flag);
+        }
 
         if (entity instanceof EntityPlayerMP) {
             EntityPlayerMP player = (EntityPlayerMP) entity;
 
-            double distance = pos.getDistance(dest.getX(), dest.getY(), dest.getZ());
+            double distance = doorPos.getDistance(dest.getX(), dest.getY(), dest.getZ());
             player.sendMessage(new TextComponentTranslation("dkdmdoor.distance", String.format("%.1f", distance / 1000.0d)));
         }
 
-        ServerLogManager.printServerLog(worldIn.getMinecraftServer(), String.format("%s teleported from " + pos + " to " + dest, entity.getName()));
+        ServerLogManager.printServerLog(worldIn.getMinecraftServer(), String.format("%s teleported from (%d, %d, %d) to (%d, %d, %d)",
+                entity.getName(), doorPos.getX(), doorPos.getY(), doorPos.getZ(), dest.getX(), dest.getY(), dest.getZ()));
 
         entity.fallDistance = 0.0f;
         entity.motionY = 0.0f;
+        entity.onGround = true;
     }
 
     @Nullable
-    private static BlockPos findSpawnpointInChunk(Chunk chunkIn) {
+    private static BlockPos findSpawnpointInChunk(Chunk chunkIn, EnumFacing offset) {
         final int CHUNK_SIZE = 16;
         BlockPos vertex1 = new BlockPos(chunkIn.x * CHUNK_SIZE, 52, chunkIn.z * CHUNK_SIZE);
         int y = chunkIn.getTopFilledSegment() + CHUNK_SIZE - 1;
@@ -363,7 +412,7 @@ public class BlockDokodemoDoor extends BlockDoor  {
     }
 
     private static Chunk getChunk(World worldIn, double blockX, double blockZ) {
-        return worldIn.getChunkFromChunkCoords(MathHelper.floor(blockX / 16.0d), MathHelper.floor(blockZ / 16.0d));
+        return worldIn.getChunkProvider().provideChunk(MathHelper.floor(blockX / 16.0d), MathHelper.floor(blockZ / 16.0d));
     }
 
     @Override
@@ -394,6 +443,15 @@ public class BlockDokodemoDoor extends BlockDoor  {
         super.breakBlock(worldIn, pos, state);
 
         if (worldIn.isRemote) return;
+
+        if (state.getValue(HALF) == EnumDoorHalf.UPPER) return;
+
+        DoorDataManager manager = DokodemoDoorMod.saveHandler.getManager();
+
+        if (manager.hasDestination(pos.toImmutable())) {
+            manager.removeEntry(pos.toImmutable(), state.getMaterial() != Material.WOOD);
+            DokodemoDoorMod.saveHandler.saveDoorInfo(manager.getDoorData());
+        }
     }
 
     // --- Teleportation System End ---

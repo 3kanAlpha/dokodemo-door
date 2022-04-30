@@ -1,7 +1,9 @@
 package net.mgcup.dkdmdoor;
 
+import net.mgcup.dkdmdoor.util.DokodemoDoorSaveHandler;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.WorldServer;
+import net.minecraft.world.storage.SaveHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
@@ -18,6 +20,8 @@ public class DokodemoDoorMod
     public static final String VERSION = "0.1";
 
     public static Logger logger;
+
+    public static DokodemoDoorSaveHandler saveHandler;
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event)
@@ -39,5 +43,6 @@ public class DokodemoDoorMod
     @EventHandler
     public void onServerStarting(FMLServerStartingEvent event) {
         WorldServer server = event.getServer().getWorld(0);
+        saveHandler = new DokodemoDoorSaveHandler(server.getSaveHandler().getWorldDirectory());
     }
 }
