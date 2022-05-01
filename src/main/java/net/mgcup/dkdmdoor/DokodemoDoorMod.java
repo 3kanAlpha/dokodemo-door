@@ -1,5 +1,7 @@
 package net.mgcup.dkdmdoor;
 
+import net.mgcup.dkdmdoor.network.PacketPipeline;
+import net.mgcup.dkdmdoor.network.PacketTeleportationSound;
 import net.mgcup.dkdmdoor.util.DokodemoDoorSaveHandler;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.WorldServer;
@@ -23,6 +25,7 @@ public class DokodemoDoorMod
     public static Logger logger;
 
     public static DokodemoDoorSaveHandler saveHandler;
+    public static PacketPipeline packetPipeline = new PacketPipeline();
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event)
@@ -34,11 +37,12 @@ public class DokodemoDoorMod
     public void init(FMLInitializationEvent event)
     {
         MinecraftForge.EVENT_BUS.register(new LocationFixer());
+        packetPipeline.registerChannel(DokodemoDoorMod.MODID, PacketTeleportationSound.class);
     }
 
     @EventHandler
     public void postInit(FMLPostInitializationEvent event) {
-        // postinit
+        packetPipeline.postInit();
     }
 
     @EventHandler

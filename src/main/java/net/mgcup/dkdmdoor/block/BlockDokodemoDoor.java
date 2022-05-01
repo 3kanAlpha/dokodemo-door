@@ -4,6 +4,7 @@ import net.mgcup.dkdmdoor.DokodemoDoorMod;
 import net.mgcup.dkdmdoor.LocationFixer;
 import net.mgcup.dkdmdoor.init.ModBlocks;
 import net.mgcup.dkdmdoor.init.ModItems;
+import net.mgcup.dkdmdoor.network.PacketTeleportationSound;
 import net.mgcup.dkdmdoor.util.DoorDataManager;
 import net.mgcup.dkdmdoor.util.ServerLogManager;
 import net.minecraft.block.Block;
@@ -43,7 +44,7 @@ import java.util.Random;
 
 public class BlockDokodemoDoor extends BlockDoor  {
     private static final int TRAVEL_LIMIT = 29999872;
-    private static final int TRAVEL_LIMIT_SAFE = 100000;
+    private static final int TRAVEL_LIMIT_SAFE = 200000;
     private static final int TRAVEL_LIMIT_STONE = 10000;
 
     public BlockDokodemoDoor(Material materialIn) {
@@ -344,7 +345,7 @@ public class BlockDokodemoDoor extends BlockDoor  {
 
     private void teleportToDestination(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase entity) {
         DoorDataManager manager = DokodemoDoorMod.saveHandler.getManager();
-        BlockPos dest = manager.getDestination(pos);
+        BlockPos dest = manager.getDestination(pos.toImmutable());
 
         Chunk chunk = getChunk(worldIn, dest.getX(), dest.getZ());
 
@@ -378,6 +379,9 @@ public class BlockDokodemoDoor extends BlockDoor  {
 
             double distance = doorPos.getDistance(dest.getX(), dest.getY(), dest.getZ());
             player.sendMessage(new TextComponentTranslation("dkdmdoor.distance", String.format("%.1f", distance / 1000.0d)));
+
+            // Play portal trigger sound on client side
+            DokodemoDoorMod.packetPipeline.sendTo(new PacketTeleportationSound(), player);
         }
 
         ServerLogManager.printServerLog(worldIn.getMinecraftServer(), String.format("%s teleported from (%d, %d, %d) to (%d, %d, %d)",
