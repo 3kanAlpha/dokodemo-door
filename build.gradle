@@ -123,3 +123,6 @@ copy {
     into "$buildDir/classes/java/main"
     from sourceSets.main.resources
 }
+
+compileJava.options.encoding = "UTF-8"
+compileTestJava.options.encoding = "UTF-8"
