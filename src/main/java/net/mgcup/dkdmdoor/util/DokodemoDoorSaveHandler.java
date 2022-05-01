@@ -7,6 +7,9 @@ import net.minecraft.world.storage.SaveHandler;
 import java.io.*;
 import java.nio.file.Files;
 
+/**
+ * ドアのネットワーク情報をNBTデータとしてファイルから読み書きする
+ */
 public class DokodemoDoorSaveHandler {
     private final File saveDirectory;
     private static final String DAT_NAME = "doors.dat";

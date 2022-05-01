@@ -29,7 +29,6 @@ import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.text.TextComponentString;
 import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.util.text.translation.I18n;
 import net.minecraft.world.Explosion;
@@ -44,7 +43,7 @@ import java.util.Random;
 
 public class BlockDokodemoDoor extends BlockDoor  {
     private static final int TRAVEL_LIMIT = 29999872;
-    private static final int TRAVEL_LIMIT_SAFE = 200000;
+    private static final int TRAVEL_LIMIT_SAFE = 8300000; // 8300000にするとマイクラがバグる
     private static final int TRAVEL_LIMIT_STONE = 10000;
 
     public BlockDokodemoDoor(Material materialIn) {
@@ -98,6 +97,19 @@ public class BlockDokodemoDoor extends BlockDoor  {
         return this.blockMaterial == Material.IRON ? 1005 : 1006;
     }
 
+    /**
+     * 基本BlockDoorと同じ動作だが、BlockのMaterialに関係なく手で開閉することが可能になっている
+     * @param worldIn ブロックの存在するWorld
+     * @param pos 右クリックされたブロックの座標
+     * @param state 右クリックされたブロックのBlockState
+     * @param playerIn 右クリックしたEntityPlayer
+     * @param hand
+     * @param facing
+     * @param hitX
+     * @param hitY
+     * @param hitZ
+     * @return ドアが正しく開閉された場合にtrueを返す
+     */
     @Override
     public boolean onBlockActivated(World worldIn, BlockPos pos, IBlockState state, EntityPlayer playerIn, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
         BlockPos bottom = state.getValue(HALF) == BlockDoor.EnumDoorHalf.LOWER ? pos : pos.down();
@@ -115,7 +127,14 @@ public class BlockDokodemoDoor extends BlockDoor  {
         }
     }
 
-    // Door is not broken if the door is in air
+    /**
+     * ドアの下にあるブロックが壊れてもアイテム化しないように変更
+     * @param state
+     * @param worldIn
+     * @param pos
+     * @param blockIn
+     * @param fromPos
+     */
     @Override
     public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, Block blockIn, BlockPos fromPos) {
         // if the lower part is broken
@@ -252,6 +271,12 @@ public class BlockDokodemoDoor extends BlockDoor  {
         this.checkIfEntityPassed(worldIn, pos, state);
     }
 
+    /**
+     * Entityがドアを通過したかどうかチェックする
+     * @param worldIn ドアが存在するWorld
+     * @param pos ドアが置かれている座標
+     * @param state ドアのBlockState
+     */
     private void checkIfEntityPassed(World worldIn, BlockPos pos, IBlockState state) {
         if (!isOpen(worldIn, pos) || !(worldIn.provider instanceof WorldProviderSurface)) return;
 
@@ -301,6 +326,13 @@ public class BlockDokodemoDoor extends BlockDoor  {
         }
     }
 
+    /**
+     * ドアをEntityが通過したときに実行される。テレポート先が既に決定されているか否かによって処理を分岐する。
+     * @param worldIn ドアが存在するWorld
+     * @param pos ドア下部の座標
+     * @param state ドア下部のBlockState
+     * @param entity ドアを通過したEntity
+     */
     private void activateTeleporting(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase entity) {
         DokodemoDoorMod.logger.debug("Door Teleportation System Activated!");
 
@@ -309,7 +341,7 @@ public class BlockDokodemoDoor extends BlockDoor  {
         // if (dest != null) DokodemoDoorMod.logger.debug(String.format("Destination: %s", dest.toString()));
 
         if (dest == null) {
-            teleportSomewhere(worldIn, pos, state, entity);
+            this.teleportSomewhere(worldIn, pos, state, entity);
         }
         else {
             this.teleportToDestination(worldIn, pos, state, entity);
@@ -318,6 +350,13 @@ public class BlockDokodemoDoor extends BlockDoor  {
         DokodemoDoorMod.saveHandler.saveDoorInfo(DokodemoDoorMod.saveHandler.getManager().getDoorData());
     }
 
+    /**
+     * まだ行き先の決定されていないドアの出口をランダムに決定する。
+     * @param worldIn
+     * @param pos
+     * @param state
+     * @param entity
+     */
     private void teleportSomewhere(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase entity) {
         double destX, destZ;
 
@@ -343,6 +382,13 @@ public class BlockDokodemoDoor extends BlockDoor  {
         this.teleportEntity(worldIn, pos, state, entity, dest);
     }
 
+    /**
+     * 既にドアの行き先が決定されている場合に呼ばれる。ドアの接続先を取得してそこへEntityを飛ばす。
+     * @param worldIn
+     * @param pos
+     * @param state
+     * @param entity
+     */
     private void teleportToDestination(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase entity) {
         DoorDataManager manager = DokodemoDoorMod.saveHandler.getManager();
         BlockPos dest = manager.getDestination(pos.toImmutable());
@@ -352,6 +398,14 @@ public class BlockDokodemoDoor extends BlockDoor  {
         this.teleportEntity(worldIn, pos, state, entity, dest);
     }
 
+    /**
+     * 与えられた座標にEntityをテレポートさせる。
+     * @param worldIn
+     * @param doorPos
+     * @param doorState
+     * @param entity テレポートさせるEntity
+     * @param dest テレポート先の座標
+     */
     private void teleportEntity(World worldIn, BlockPos doorPos, IBlockState doorState, EntityLivingBase entity, BlockPos dest) {
         if (entity.isRiding()) {
             entity.dismountRidingEntity();
@@ -359,10 +413,10 @@ public class BlockDokodemoDoor extends BlockDoor  {
 
         BlockPos offset = dest.offset(getFacing(worldIn, doorPos));
 
-        // can suffocate
+        // このままだと窒息しないチェックをしていないので、LocationFixerで処理をする
         entity.setPositionAndUpdate(offset.getX() + 0.5d, dest.getY() + 0.5d, offset.getZ() + 0.5d);
 
-        // Place the door if needed
+        // ドアがなんらかの原因で壊れていた場合、再設置する
         if (doorState.getMaterial() != Material.WOOD && worldIn.getBlockState(dest).getBlock() != this) {
             if (worldIn.getBlockState(dest.down()).getBlock() == Blocks.AIR) {
                 worldIn.setBlockState(dest.down(), Blocks.STONEBRICK.getDefaultState());
@@ -370,17 +424,19 @@ public class BlockDokodemoDoor extends BlockDoor  {
 
             boolean flag = doorState.getValue(HINGE) == EnumHingePosition.RIGHT;
             ItemDoor.placeDoor(worldIn, dest, getFacing(worldIn, doorPos).getOpposite(), this, flag);
+            // バグ: 耕地などの上にドアが設置されない？
         }
 
         if (entity instanceof EntityPlayerMP) {
             EntityPlayerMP player = (EntityPlayerMP) entity;
 
+            // これが無いとチャンクが読み込まれるまでの間に落下して地面に埋まる
             LocationFixer.add(player, offset);
 
             double distance = doorPos.getDistance(dest.getX(), dest.getY(), dest.getZ());
             player.sendMessage(new TextComponentTranslation("dkdmdoor.distance", String.format("%.1f", distance / 1000.0d)));
 
-            // Play portal trigger sound on client side
+            // ネザーポータルの音をテレポートした人のみに聞こえるように再生
             DokodemoDoorMod.packetPipeline.sendTo(new PacketTeleportationSound(), player);
         }
 
@@ -392,6 +448,12 @@ public class BlockDokodemoDoor extends BlockDoor  {
         entity.onGround = true;
     }
 
+    /**
+     * 与えられたChunk内から、ドアを設置可能な空間を探す。
+     * @param chunkIn テレポート先のChunk
+     * @param offset
+     * @return ドアを設置可能なスペースが存在する場合その座標を返す。そうでない場合nullを返す。
+     */
     @Nullable
     private static BlockPos findSpawnpointInChunk(Chunk chunkIn, EnumFacing offset) {
         final int CHUNK_SIZE = 16;
@@ -444,7 +506,12 @@ public class BlockDokodemoDoor extends BlockDoor  {
         }
     }
 
-    // remove the door info if the door is broken
+    /**
+     * ドアが壊れた場合、ドア間の接続を切る。
+     * @param worldIn 壊されたドアが存在したWorld
+     * @param pos 壊されたドアが存在していた座標
+     * @param state 壊されたドアのBlockState
+     */
     @Override
     public void breakBlock(World worldIn, BlockPos pos, IBlockState state) {
         super.breakBlock(worldIn, pos, state);

@@ -12,6 +12,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 
 public class DoorDataManager {
+    /**
+     * 隣接リスト表現的な感じでドアのネットワークを保持している。
+     * ただし、入次数・出次数ともに最大1なのでMapで事足りる。
+     */
     private HashMap<BlockPos, BlockPos> doorNetwork = new HashMap<>();
 
     public DoorDataManager(NBTTagCompound nbtTagCompound) {
@@ -60,15 +64,31 @@ public class DoorDataManager {
         return doorData;
     }
 
+    /**
+     * ネットワークにfromからtoへ向かう有向辺を追加する
+     * @param from
+     * @param to
+     */
     public void addEntry(BlockPos from, BlockPos to) {
         this.addEntry(from, to, false);
     }
 
+    /**
+     * ネットワークにfromとtoを繋ぐ辺を追加する。
+     * @param from
+     * @param to
+     * @param isUndirected trueである場合、無向辺とする
+     */
     public void addEntry(BlockPos from, BlockPos to, boolean isUndirected) {
         doorNetwork.put(from, to);
         if (isUndirected) doorNetwork.put(to, from);
     }
 
+    /**
+     * ネットワークからfromを起点とする辺を削除する。
+     * @param from
+     * @param isUndirected trueである場合、toからfromに向かう辺も削除する
+     */
     public void removeEntry(BlockPos from, boolean isUndirected) {
         if (!doorNetwork.containsKey(from)) return;
         BlockPos to = doorNetwork.get(from);

@@ -104,17 +104,14 @@ public class PacketPipeline extends MessageToMessageCodec<FMLProxyPacket, Abstra
         }
 
         this.isPostInitialized = true;
-        Collections.sort(this.packets, new Comparator<Class<? extends AbstractPacket>>() {
-            @Override
-            public int compare(Class<? extends AbstractPacket> o1, Class<? extends AbstractPacket> o2) {
-                int com = String.CASE_INSENSITIVE_ORDER.compare(o1.getCanonicalName(), o2.getCanonicalName());
+        Collections.sort(this.packets, (o1, o2) -> {
+            int com = String.CASE_INSENSITIVE_ORDER.compare(o1.getCanonicalName(), o2.getCanonicalName());
 
-                if (com == 0) {
-                    com = o1.getCanonicalName().compareTo(o2.getCanonicalName());
-                }
-
-                return com;
+            if (com == 0) {
+                com = o1.getCanonicalName().compareTo(o2.getCanonicalName());
             }
+
+            return com;
         });
     }
 
