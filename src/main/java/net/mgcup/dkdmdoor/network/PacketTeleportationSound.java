@@ -22,7 +22,7 @@ public class PacketTeleportationSound extends AbstractPacket {
     public void handleClientSide(EntityPlayer player) {
         Minecraft mc = Minecraft.getMinecraft();
         mc.getSoundHandler().playSound(PositionedSoundRecord.getRecord(
-                SoundEvents.BLOCK_PORTAL_TRAVEL, 0.8f + player.world.rand.nextFloat() * 0.4f, 1.0f));
+                SoundEvents.BLOCK_PORTAL_TRAVEL, 0.8f + player.world.rand.nextFloat() * 0.4f, 0.6f));
     }
 
     @Override
