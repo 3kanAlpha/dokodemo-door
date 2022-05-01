@@ -1,6 +1,7 @@
 package net.mgcup.dkdmdoor.block;
 
 import net.mgcup.dkdmdoor.DokodemoDoorMod;
+import net.mgcup.dkdmdoor.LocationFixer;
 import net.mgcup.dkdmdoor.init.ModBlocks;
 import net.mgcup.dkdmdoor.init.ModItems;
 import net.mgcup.dkdmdoor.util.DoorDataManager;
@@ -355,7 +356,7 @@ public class BlockDokodemoDoor extends BlockDoor  {
             entity.dismountRidingEntity();
         }
 
-        BlockPos offset = dest.offset(getFacing(worldIn, doorPos).getOpposite());
+        BlockPos offset = dest.offset(getFacing(worldIn, doorPos));
 
         // can suffocate
         entity.setPositionAndUpdate(offset.getX() + 0.5d, dest.getY() + 0.5d, offset.getZ() + 0.5d);
@@ -367,11 +368,13 @@ public class BlockDokodemoDoor extends BlockDoor  {
             }
 
             boolean flag = doorState.getValue(HINGE) == EnumHingePosition.RIGHT;
-            ItemDoor.placeDoor(worldIn, dest, getFacing(worldIn, doorPos), this, flag);
+            ItemDoor.placeDoor(worldIn, dest, getFacing(worldIn, doorPos).getOpposite(), this, flag);
         }
 
         if (entity instanceof EntityPlayerMP) {
             EntityPlayerMP player = (EntityPlayerMP) entity;
+
+            LocationFixer.add(player, offset);
 
             double distance = doorPos.getDistance(dest.getX(), dest.getY(), dest.getZ());
             player.sendMessage(new TextComponentTranslation("dkdmdoor.distance", String.format("%.1f", distance / 1000.0d)));
@@ -402,7 +405,7 @@ public class BlockDokodemoDoor extends BlockDoor  {
                 double blockDistance = b.distanceSqToCenter(chunkIn.x * CHUNK_SIZE + 8,63, chunkIn.z * CHUNK_SIZE + 8);
 
                 if (spawn == null || blockDistance < minDistance) {
-                    spawn = (state.getBlock() instanceof BlockStaticLiquid ? b.up(10) : b);
+                    spawn = (state.getBlock() instanceof BlockStaticLiquid ? b.up(10) : b).up();
                     minDistance = blockDistance;
                 }
             }

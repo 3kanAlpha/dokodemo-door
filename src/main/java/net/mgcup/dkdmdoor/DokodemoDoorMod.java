@@ -4,6 +4,7 @@ import net.mgcup.dkdmdoor.util.DokodemoDoorSaveHandler;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.storage.SaveHandler;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
@@ -32,7 +33,7 @@ public class DokodemoDoorMod
     @EventHandler
     public void init(FMLInitializationEvent event)
     {
-        // some example code
+        MinecraftForge.EVENT_BUS.register(new LocationFixer());
     }
 
     @EventHandler
