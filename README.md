@@ -3,6 +3,8 @@ This mod is originally made by つてと.
 
 **IMPORTANT: This mod is not compatible with the original versions.**
 
+![title](https://i.imgur.com/Pw9N326.png)
+
 ## Dependencies
 
 - Minecraft 1.12.2
