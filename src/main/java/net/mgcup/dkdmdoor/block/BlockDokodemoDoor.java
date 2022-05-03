@@ -38,13 +38,20 @@ import net.minecraft.world.WorldProviderSurface;
 import net.minecraft.world.chunk.Chunk;
 
 import javax.annotation.Nullable;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 
 public class BlockDokodemoDoor extends BlockDoor  {
     private static final int TRAVEL_LIMIT = 29999872;
-    private static final int TRAVEL_LIMIT_SAFE = 8300000; // 8300000にするとマイクラがバグる
+    private static final int TRAVEL_LIMIT_SAFE = 8300000;
     private static final int TRAVEL_LIMIT_STONE = 10000;
+
+    /**
+     * 多重テレポートを避けるために前回テレポートした時刻を保持しておく
+     */
+    private static final HashMap<UUID, Long> cooldownTimer = new HashMap<>();
 
     public BlockDokodemoDoor(Material materialIn) {
         super(materialIn);
@@ -287,7 +294,7 @@ public class BlockDokodemoDoor extends BlockDoor  {
         int posZ = pos.getZ();
 
         float f = 1.0f / 8.0f;
-        AxisAlignedBB bb = new AxisAlignedBB(posX + f, posY, posZ + f, posX + 1 - f, posY + 0.5d, posZ + 1 - f);
+        AxisAlignedBB bb = new AxisAlignedBB(posX + f, posY, posZ + f, posX + 1 - f, posY + 0.8d, posZ + 1 - f);
 
         List<EntityLivingBase> list = worldIn.getEntitiesWithinAABB(EntityLivingBase.class, bb);
 
@@ -334,6 +341,10 @@ public class BlockDokodemoDoor extends BlockDoor  {
      * @param entity ドアを通過したEntity
      */
     private void activateTeleporting(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase entity) {
+        if (entity instanceof EntityPlayer) {
+            if (!canTeleport((EntityPlayer) entity, worldIn)) return;
+        }
+
         DokodemoDoorMod.logger.debug("Door Teleportation System Activated!");
 
         BlockPos dest = DokodemoDoorMod.saveHandler.getManager().getDestination(pos);
@@ -433,6 +444,9 @@ public class BlockDokodemoDoor extends BlockDoor  {
             // これが無いとチャンクが読み込まれるまでの間に落下して地面に埋まる
             LocationFixer.add(player, offset);
 
+            // 多重テレポート防止
+            cooldownTimer.put(player.getUniqueID(), worldIn.getTotalWorldTime());
+
             double distance = doorPos.getDistance(dest.getX(), dest.getY(), dest.getZ());
             player.sendMessage(new TextComponentTranslation("dkdmdoor.distance", String.format("%.1f", distance / 1000.0d)));
 
@@ -482,6 +496,21 @@ public class BlockDokodemoDoor extends BlockDoor  {
 
     private static Chunk getChunk(World worldIn, double blockX, double blockZ) {
         return worldIn.getChunkProvider().provideChunk(MathHelper.floor(blockX / 16.0d), MathHelper.floor(blockZ / 16.0d));
+    }
+
+    /**
+     * 前回のテレポートから60ticks以上経過しているか確認する
+     * @param player
+     * @param world
+     * @return
+     */
+    private static boolean canTeleport(EntityPlayer player, World world) {
+        if (!cooldownTimer.containsKey(player.getUniqueID())) return true;
+
+        long currentWorldTime = world.getTotalWorldTime();
+        long elapsed = currentWorldTime - cooldownTimer.get(player.getUniqueID());
+
+        return elapsed >= 60;
     }
 
     @Override
